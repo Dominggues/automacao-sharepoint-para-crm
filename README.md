@@ -28,7 +28,7 @@ O grande diferencial deste projeto é o sistema de **Enriquecimento em Duas Cama
 - **Ollama / Qwen2.5** (Inteligência Artificial Local / LLM)
 
 ## ⚙️ Como utilizar este fluxo
-1. Importe o arquivo `automacao_leads.json` para o seu n8n.
+1. Importe o arquivo `Automação de Licitações.json` para o seu n8n.
 2. Configure suas credenciais OAuth2 do Salesforce e Microsoft.
 3. Adicione sua chave do Serper no nó de HTTP Request.
 4. Aponte o nó da IA para a URL da sua instância do Ollama.
