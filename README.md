@@ -1,4 +1,4 @@
-# 🤖 B2B Lead Enrichment & Salesforce Automation (n8n)
+# 🤖 Enriquecimento de leads B2B e automação do Salesforce (n8n)
 
 ## 📌 Visão Geral
 Este projeto é um fluxo avançado de automação desenvolvido no **n8n**. Ele foi criado para capturar diariamente novas empresas que venceram licitações (via SharePoint/Excel), enriquecer seus dados de contato de forma inteligente e criar Leads completos e prontos para prospecção no CRM **Salesforce**.
