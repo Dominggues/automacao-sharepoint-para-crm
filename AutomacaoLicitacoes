@@ -1,0 +1,821 @@
+{
+  "name": "AutomacaoLicitacoes",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "dd22415a-6060-4f2e-be8f-ea87ca455f91",
+      "name": "Rodar 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1232,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "getRows",
+        "workbook": "01VA7CPHG3KNLOHALTGZC2CLSVVMPPGXTK",
+        "worksheet": "{00000000-0001-0000-0000-000000000000}",
+        "table": "{77E878EA-61A5-49B4-ACFE-F9BCCD898E4E}",
+        "limit": 150
+      },
+      "id": "4811f140-4528-495c-a050-66faae39e37a",
+      "name": "Ler Excel SharePoint",
+      "type": "n8n-nodes-base.microsoftExcel",
+      "typeVersion": 1,
+      "position": [
+        -1008,
+        48
+      ],
+      "notesInFlow": true,
+      "retryOnFail": true,
+      "credentials": {
+        "microsoftExcelOAuth2Api": {
+          "id": "SQRJB8xnvwZTMaJK",
+          "name": "Microsoft Excel account"
+        }
+      },
+      "notes": "Conecte sua conta e selecione a planilha"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status_outreach }}",
+              "operation": "isEmpty"
+            },
+            {
+              "value1": "={{ $json.status_outreach }}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      },
+      "id": "ef74297d-c170-41ee-ac2d-1d926d956157",
+      "name": "Filtrar Apenas Novos",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -784,
+        48
+      ],
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "company": "={{ $('Ler Excel SharePoint').item.json.fornecedor }}",
+        "lastname": "={{ (\"[Licitação] - \" + $('Ler Excel SharePoint').item.json.fornecedor).substring(0, 80).trim() }}",
+        "additionalFields": {
+          "city": "={{ $('API ReceitaWS').item.json.municipio }} - {{ $('API ReceitaWS').item.json.uf }}",
+          "customFieldsUi": {
+            "customFieldsValues": [
+              {
+                "fieldId": "Observacao__c",
+                "value": "=🔍 Não encontrou o contato? Clique no link abaixo para pesquisar no Google: https://www.google.com/search?q=CNPJ+{{ $('API ReceitaWS').item.json.cnpj }}+telefone+contato"
+              },
+              {
+                "fieldId": "CNPJ__c",
+                "value": "={{ $('Ler Excel SharePoint').item.json.cnpj_fornecedor.toString()}}"
+              },
+              {
+                "fieldId": "Quantidade_de_Licita_es__c",
+                "value": "1"
+              },
+              {
+                "fieldId": "Hist_rico_de_Licita_es__c",
+                "value": "=- 1° Licitação detectada: {{ $('Ler Excel SharePoint').item.json.fornecedor }} em {{ $today.toFormat('dd/MM/yyyy') }}\n{{ $('Ler Excel SharePoint').item.json.link_pncp }}"
+              }
+            ]
+          },
+          "email": "={{ ($('API ReceitaWS').item.json.email || '').split('/')[0].replace(',', '.').substring(0,80).trim() }}",
+          "owner": "00GNp00000NrfXdMAJ",
+          "phone": "={{ ($('API ReceitaWS').item.json.telefone || '').split('/')[0].substring(0,40).trim() }}",
+          "website": "={{ $('Ler Excel SharePoint').item.json.link_pncp }}"
+        }
+      },
+      "id": "d801465d-223d-4b8c-b224-638a4f554cee",
+      "name": "Criar Lead no Salesforce",
+      "type": "n8n-nodes-base.salesforce",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        -480
+      ],
+      "notesInFlow": true,
+      "retryOnFail": true,
+      "credentials": {
+        "salesforceOAuth2Api": {
+          "id": "dNcWyeklLFWHX1UU",
+          "name": "Salesforce account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "76c9d747-ee5d-43d0-b5a3-a7b271d6081f",
+              "leftValue": "={{ $json.telefone }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        336,
+        -384
+      ],
+      "id": "8d3f65c5-bb49-4642-a167-0c79d43e3cb4",
+      "name": "Se ele achar o telefone",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://google.serper.dev/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "4347e003ef5575cfe10f318ae121c69fd6da21b0"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"q\": \"\\\"{{ $('Ler Excel SharePoint').item.json.cnpj_fornecedor }}\\\" OR \\\"{{ $('Ler Excel SharePoint').item.json.fornecedor }}\\\" telefone contato\",\n  \"gl\": \"br\",\n  \"hl\": \"pt-br\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        560,
+        -288
+      ],
+      "id": "7d5ce6bf-5504-4861-86fc-4dc4cef60bd1",
+      "name": "Busca com Serper",
+      "notesInFlow": true,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://qf4s9f8cku7wd3-11434.proxy.runpod.net/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"qwen2.5:14b\",\n  \"stream\": false,\n  \"format\": \"json\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Você é um especialista em extração de dados. Sua única função é extrair o E-mail e o Telefone a partir dos textos. REGRAS: 1. Retorne APENAS o resultado final em JSON. 2. Não confunda CNPJ ou CEP com telefone. 3. Formato exato: {\\\"telefone\\\": \\\"(11) 9999-9999\\\", \\\"email\\\": \\\"email@empresa.com\\\"}. Se não achar algum, deixe em branco.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"TEXTOS DA PESQUISA DO GOOGLE:\\n{{ $json.organic.map(item => item.snippet).join(' | ') }}\"\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        784,
+        -288
+      ],
+      "id": "d4478fff-a6a4-4e63-a02a-4d853fcee19b",
+      "name": "IA para ler o Serper",
+      "notesInFlow": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3645c76e-3f69-4d86-85a6-5edafde5ee64",
+              "name": "telefone",
+              "value": "={{ JSON.parse($json.message.content).telefone }}",
+              "type": "string"
+            },
+            {
+              "id": "cef5028b-b721-4a0f-9b82-0b23cc237048",
+              "name": "email",
+              "value": "={{ JSON.parse($json.message.content).email }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1008,
+        -288
+      ],
+      "id": "46892832-8f1a-40aa-a9ea-f1ba3d551422",
+      "name": "Cria a variável telefone e e-mail",
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "=https://receitaws.com.br/v1/cnpj/{{ $('Ler Excel SharePoint').item.json.cnpj_fornecedor }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        112,
+        -384
+      ],
+      "id": "67d8d372-4a3c-4820-86d5-0bfe69dcc82d",
+      "name": "API ReceitaWS",
+      "notesInFlow": true,
+      "alwaysOutputData": false,
+      "executeOnce": false,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "name": "Replace Me",
+      "typeVersion": 1,
+      "position": [
+        -1232,
+        272
+      ],
+      "id": "2e44b91a-43f6-4561-abe2-b128f4bbf871",
+      "placeholder": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -480,
+        192
+      ],
+      "id": "3c8f5aae-835b-40ab-be31-ad8b43537352",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "amount": 22
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -112,
+        -384
+      ],
+      "id": "60239a0b-4528-4a0d-8077-41ea229ba955",
+      "name": "Wait",
+      "webhookId": "07ae1c6f-a523-4c57-bc35-e99c1a2f4b29"
+    },
+    {
+      "parameters": {
+        "resource": "worksheet",
+        "operation": "update",
+        "workbook": {
+          "__rl": true,
+          "value": "01VA7CPHG3KNLOHALTGZC2CLSVVMPPGXTK",
+          "mode": "list",
+          "cachedResultName": "Tender-Extractor_Test",
+          "cachedResultUrl": "https://zassogmbh-my.sharepoint.com/personal/pedro_bueno_zasso_com_br/_layouts/15/Doc.aspx?sourcedoc=%7BE35653DB-7381-4536-A12E-55AB1EF35E6A%7D&file=Tender-Extractor_Test.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1"
+        },
+        "worksheet": {
+          "__rl": true,
+          "value": "{00000000-0001-0000-0000-000000000000}",
+          "mode": "list",
+          "cachedResultName": "Contratos",
+          "cachedResultUrl": "https://zassogmbh-my.sharepoint.com/personal/pedro_bueno_zasso_com_br/_layouts/15/Doc.aspx?sourcedoc=%7BE35653DB-7381-4536-A12E-55AB1EF35E6A%7D&file=Tender-Extractor_Test.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1&activeCell=Contratos!A1"
+        },
+        "columnToMatchOn": "numero_controle_pncp",
+        "valueToMatchOn": "={{ $('Loop Over Items').item.json.numero_controle_pncp }}",
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "status_outreach",
+              "fieldValue": "Lead Duplicado no SalesForce"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftExcel",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        -32
+      ],
+      "id": "13d80411-68ad-4b71-b79d-83e7a49a3b8d",
+      "name": "Update Duplicado",
+      "retryOnFail": true,
+      "credentials": {
+        "microsoftExcelOAuth2Api": {
+          "id": "SQRJB8xnvwZTMaJK",
+          "name": "Microsoft Excel account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "worksheet",
+        "operation": "update",
+        "workbook": {
+          "__rl": true,
+          "value": "01VA7CPHG3KNLOHALTGZC2CLSVVMPPGXTK",
+          "mode": "list",
+          "cachedResultName": "Tender-Extractor_Test",
+          "cachedResultUrl": "https://zassogmbh-my.sharepoint.com/personal/pedro_bueno_zasso_com_br/_layouts/15/Doc.aspx?sourcedoc=%7BE35653DB-7381-4536-A12E-55AB1EF35E6A%7D&file=Tender-Extractor_Test.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1"
+        },
+        "worksheet": {
+          "__rl": true,
+          "value": "{00000000-0001-0000-0000-000000000000}",
+          "mode": "list",
+          "cachedResultName": "Contratos",
+          "cachedResultUrl": "https://zassogmbh-my.sharepoint.com/personal/pedro_bueno_zasso_com_br/_layouts/15/Doc.aspx?sourcedoc=%7BE35653DB-7381-4536-A12E-55AB1EF35E6A%7D&file=Tender-Extractor_Test.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1&activeCell=Contratos!A1"
+        },
+        "columnToMatchOn": "numero_controle_pncp",
+        "valueToMatchOn": "={{ $('Loop Over Items').item.json.numero_controle_pncp }}",
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "status_outreach",
+              "fieldValue": "Enviado no Salesforce"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftExcel",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        -224
+      ],
+      "id": "b5677732-e7b6-4143-9208-12e4f343246d",
+      "name": "Update Enviado",
+      "retryOnFail": true,
+      "credentials": {
+        "microsoftExcelOAuth2Api": {
+          "id": "SQRJB8xnvwZTMaJK",
+          "name": "Microsoft Excel account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1c79342b-182c-4d9f-91cd-9a22ea412466",
+              "leftValue": "={{ $json.Id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1456,
+        -384
+      ],
+      "id": "76317386-565b-45a6-a142-3bf6943a9db9",
+      "name": "Existe no Salesforce?"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "leadId": "={{ $('Buscar Lead por CNPJ').item.json.Id }}",
+        "updateFields": {
+          "customFieldsUi": {
+            "customFieldsValues": [
+              {
+                "fieldId": "=Quantidade_de_Licita_es__c",
+                "value": "={{ Number($('Buscar Lead por CNPJ').item.json.Quantidade_de_Licita_es__c || 0) + 1 }}"
+              },
+              {
+                "fieldId": "=Hist_rico_de_Licita_es__c",
+                "value": "={{ $('Buscar Lead por CNPJ').item.json.Hist_rico_de_Licita_es__c || '' }}\n\n- {{ Number($('Buscar Lead por CNPJ').item.json.Quantidade_de_Licita_es__c || 0) + 1 }}° Licitação detectada: {{ $('Ler Excel SharePoint').item.json.fornecedor }} em {{ $today.toFormat('dd/MM/yyyy') }}\n{{ $('Ler Excel SharePoint').item.json.link_pncp }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.salesforce",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        -288
+      ],
+      "id": "e0315fa8-614c-4b89-acd9-3fc0b3ac8b18",
+      "name": "Update lead",
+      "retryOnFail": true,
+      "credentials": {
+        "salesforceOAuth2Api": {
+          "id": "dNcWyeklLFWHX1UU",
+          "name": "Salesforce account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "options": {
+          "conditionsUi": {
+            "conditionValues": [
+              {
+                "field": "=CNPJ__c",
+                "value": "={{ $('Ler Excel SharePoint').item.json.cnpj_fornecedor.toString() }}"
+              }
+            ]
+          },
+          "fields": "Quantidade_de_Licita_es__c, Hist_rico_de_Licita_es__c, Id"
+        }
+      },
+      "type": "n8n-nodes-base.salesforce",
+      "typeVersion": 1,
+      "position": [
+        1232,
+        -384
+      ],
+      "id": "8a2cde8e-2e11-44d8-9b1b-e79ddf0083cf",
+      "name": "Buscar Lead por CNPJ",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "salesforceOAuth2Api": {
+          "id": "dNcWyeklLFWHX1UU",
+          "name": "Salesforce account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d3878763-778d-4bda-b1d2-5c99972dd3f7",
+              "leftValue": "={{ $('Loop Over Items').item.json.cnpj_fornecedor.toString().replace(/[^0-9]/g, '').length }}",
+              "rightValue": 14,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -336,
+        -288
+      ],
+      "id": "1dc6b633-8666-4f75-afb1-4dea011c9b78",
+      "name": "CNPJ é válido?"
+    },
+    {
+      "parameters": {
+        "resource": "worksheet",
+        "operation": "update",
+        "workbook": {
+          "__rl": true,
+          "value": "01VA7CPHG3KNLOHALTGZC2CLSVVMPPGXTK",
+          "mode": "list",
+          "cachedResultName": "Tender-Extractor_Test",
+          "cachedResultUrl": "https://zassogmbh-my.sharepoint.com/personal/pedro_bueno_zasso_com_br/_layouts/15/Doc.aspx?sourcedoc=%7BE35653DB-7381-4536-A12E-55AB1EF35E6A%7D&file=Tender-Extractor_Test.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1"
+        },
+        "worksheet": {
+          "__rl": true,
+          "value": "{00000000-0001-0000-0000-000000000000}",
+          "mode": "list",
+          "cachedResultName": "Contratos",
+          "cachedResultUrl": "https://zassogmbh-my.sharepoint.com/personal/pedro_bueno_zasso_com_br/_layouts/15/Doc.aspx?sourcedoc=%7BE35653DB-7381-4536-A12E-55AB1EF35E6A%7D&file=Tender-Extractor_Test.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1&activeCell=Contratos!A1"
+        },
+        "columnToMatchOn": "numero_controle_pncp",
+        "valueToMatchOn": "={{ $('Loop Over Items').item.json.numero_controle_pncp }}",
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "status_outreach",
+              "fieldValue": "CNPJ Inválido/Incompleto"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftExcel",
+      "typeVersion": 2.2,
+      "position": [
+        -112,
+        -192
+      ],
+      "id": "22039400-1c0c-4880-b923-52a690d245e8",
+      "name": "Update CNPJ Inválido",
+      "retryOnFail": true,
+      "credentials": {
+        "microsoftExcelOAuth2Api": {
+          "id": "SQRJB8xnvwZTMaJK",
+          "name": "Microsoft Excel account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Rodar 09:00": {
+      "main": [
+        [
+          {
+            "node": "Ler Excel SharePoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ler Excel SharePoint": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Apenas Novos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Apenas Novos": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Lead no Salesforce": {
+      "main": [
+        [
+          {
+            "node": "Update Enviado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Se ele achar o telefone": {
+      "main": [
+        [
+          {
+            "node": "Buscar Lead por CNPJ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Busca com Serper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca com Serper": {
+      "main": [
+        [
+          {
+            "node": "IA para ler o Serper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IA para ler o Serper": {
+      "main": [
+        [
+          {
+            "node": "Cria a variável telefone e e-mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cria a variável telefone e e-mail": {
+      "main": [
+        [
+          {
+            "node": "Buscar Lead por CNPJ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API ReceitaWS": {
+      "main": [
+        [
+          {
+            "node": "Se ele achar o telefone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replace Me": {
+      "main": [
+        []
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "CNPJ é válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "API ReceitaWS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Enviado": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Duplicado": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe no Salesforce?": {
+      "main": [
+        [
+          {
+            "node": "Update lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Criar Lead no Salesforce",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update lead": {
+      "main": [
+        [
+          {
+            "node": "Update Duplicado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Lead por CNPJ": {
+      "main": [
+        [
+          {
+            "node": "Existe no Salesforce?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CNPJ é válido?": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update CNPJ Inválido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update CNPJ Inválido": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f623a234-2292-4271-9584-ac63958421b8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "83090f49958c34b93ce28624bb9c534f0de42fa4f5e881d13dc6eaa481799106"
+  },
+  "id": "y3VEaa4AgZBVApeW",
+  "tags": []
+}
