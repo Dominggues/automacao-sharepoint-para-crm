@@ -1,34 +1,46 @@
-# 🤖 Enriquecimento de leads B2B e automação do Salesforce (n8n)
+# 🚀 Automação de Captação e Enriquecimento de Leads (SharePoint ➔ Salesforce) via n8n
 
-## 📌 Visão Geral
-Este projeto é um fluxo avançado de automação desenvolvido no **n8n**. Ele foi criado para capturar diariamente novas empresas que venceram licitações (via SharePoint/Excel), enriquecer seus dados de contato de forma inteligente e criar Leads completos e prontos para prospecção no CRM **Salesforce**.
+Este repositório contém um fluxo avançado construído no **n8n** para automação de processos comerciais. O robô lê dados de licitações em uma planilha no SharePoint/Excel Online, enriquece o cadastro da empresa via APIs e Inteligência Artificial, e envia as informações tratadas para o Salesforce, garantindo um banco de dados limpo, sem duplicidades e com histórico de recorrência.
 
-O grande diferencial deste projeto é o sistema de **Enriquecimento em Duas Camadas (Fallback com IA)**, que garante que a equipe comercial não perca tempo buscando telefones manualmente.
+## 🌟 Principais Funcionalidades
 
-## 🏗️ Arquitetura e Fluxo de Dados
+* **Leitura Inteligente em Lote:** O fluxo varre a base de dados lendo apenas registros novos (onde a coluna de status está vazia).
+* **Validação de CNPJ:** O sistema verifica se o CNPJ possui os 14 dígitos corretos. CNPJs inválidos são bloqueados e recebem a tag de erro direto na planilha, impedindo que o CRM seja poluído.
+* **Dossiê Completo (ReceitaWS):** Integração via API que puxa automaticamente os dados públicos da Receita Federal: CNAE, Porte da Empresa, Endereço completo, E-mail e Telefone societários.
+* **Web Scraping + IA (Serper + LLM):** Se a empresa não possuir contato direto na Receita, o robô faz uma busca no Google usando a API do Serper e utiliza um modelo de Inteligência Artificial para ler os resultados e extrair telefones e e-mails de forma contextual.
+* **Módulo Anti-Duplicidade (Salesforce):** Antes de inserir qualquer dado, o robô consulta o banco do Salesforce buscando pelo CNPJ.
+    * 🟢 **Novo Lead:** Cria o registro com os dados de contato completos, formatados e higienizados.
+    * 🟡 **Lead Existente (Update Inteligente):** Não cria duplicidade! Ele acessa o lead já existente e atualiza o histórico de licitações.
+* **Contador e Histórico de Licitações:** Um grande diferencial estratégico! O sistema soma `+1` na quantidade de licitações daquela empresa e empilha um log formatado (1° Licitação, 2° Licitação...) com links, permitindo ao time comercial identificar "peixes grandes" e recorrência.
+* **Tratamento de Erros e Sanitização de Dados:** Bloqueio de quebras no envio corrigindo e-mails inválidos automaticamente (ex: substituindo vírgula por ponto) e limitando o número de caracteres em campos rigorosos do CRM.
 
-1. **Gatilho Diário:** A automação roda automaticamente todos os dias às 09:00.
-2. **Extração de Dados:** Lê as novas linhas de uma planilha hospedada no SharePoint.
-3. **Filtro Anti-Duplicidade:** Verifica se a linha já foi processada anteriormente para evitar duplicidade no CRM.
-4. **Enriquecimento Nível 1 (API Pública):** Consulta o CNPJ da empresa na API da Receita Federal (ReceitaWS) para buscar telefone e e-mail oficiais.
-5. **Enriquecimento Nível 2 (Fallback com IA):** 
-   - Se a empresa não tiver contato público, a automação aciona a API do **Serper.dev** para realizar uma busca estruturada no Google.
-   - O resultado da busca é enviado para uma **IA Local (Ollama / Qwen2.5)** via RAG.
-   - A IA extrai e formata o telefone e o e-mail encontrados na internet, retornando um JSON limpo.
-6. **Normalização:** Os dados (seja da Receita ou da IA) são padronizados.
-7. **Integração com Salesforce:** Cria o Lead no CRM e o atribui automaticamente ao executivo de vendas.
-8. **Atualização de Status:** Carimba a planilha do Excel confirmando o envio.
+## 🛠️ Tecnologias Utilizadas
 
-## 🚀 Tecnologias Utilizadas
-- **n8n** (Orquestração de Fluxos)
-- **Salesforce API** (CRM B2B)
-- **Microsoft SharePoint / Excel Node** (Base de Dados)
-- **ReceitaWS API** (Consultas de CNPJ)
-- **Serper.dev API** (Web Scraping / Google Search)
-- **Ollama / Qwen2.5** (Inteligência Artificial Local / LLM)
+* [n8n](https://n8n.io/) - Orquestração do Workflow
+* [Microsoft Graph API](https://learn.microsoft.com/en-us/graph/) - Leitura/Escrita no Excel Online (SharePoint)
+* [Salesforce API](https://developer.salesforce.com/) - Gestão de Leads
+* [ReceitaWS](https://receitaws.com.br/) - Consulta de CNPJ
+* [Serper.dev](https://serper.dev/) - Busca no Google
+* [RunPod / Ollama (LLM)] - Extração inteligente de dados não-estruturados
 
-## ⚙️ Como utilizar este fluxo
-1. Importe o arquivo `Automação de Licitações.json` para o seu n8n.
-2. Configure suas credenciais OAuth2 do Salesforce e Microsoft.
-3. Adicione sua chave do Serper no nó de HTTP Request.
-4. Aponte o nó da IA para a URL da sua instância do Ollama.
+## ⚙️ Pré-requisitos e Configuração (Salesforce)
+
+Para que o fluxo funcione corretamente, é necessário criar os seguintes **Campos Personalizados (Custom Fields)** no objeto `Lead` do seu Salesforce:
+
+1.  `CNPJ__c` (Texto)
+2.  `Quantidade_de_Licita_es__c` (Número)
+3.  `Hist_rico_de_Licita_es__c` (Área de Texto Longo)
+4.  `Observacao__c` (Área de Texto Longo)
+
+## 🚀 Como instalar e usar
+
+1. Faça o clone deste repositório ou o download do arquivo `.json`.
+2. No seu painel do n8n, vá em `Workflows` > `Add Workflow` e clique em **Import from File** (ou apenas cole o conteúdo do JSON).
+3. **Configure as suas Credenciais:** Você precisará autenticar os nós do Microsoft Excel, Salesforce e Serper.dev com suas próprias contas.
+4. Ajuste o ID da Planilha (`Workbook`) e da Tabela (`Table`) no nó "Ler Excel SharePoint" para apontar para o seu arquivo.
+5. Ative o fluxo! Ele pode ser acionado por cronograma (ex: rodar todos os dias às 09:00) ou manualmente.
+
+> ⚠️ **Aviso de Segurança Importante:** O arquivo `workflow.json` disponibilizado neste repositório está limpo e **não contém credenciais**. Se você for fazer um fork ou exportar suas próprias alterações, certifique-se de que a opção de exportar credenciais do n8n esteja DESATIVADA para não vazar dados sensíveis do seu CRM ou banco de dados.
+
+---
+*Desenvolvido com foco em eficiência comercial e higienização de banco de dados.*
