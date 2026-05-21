@@ -1,3 +1,6 @@
+<img width="1465" height="408" alt="Captura de tela 2026-05-21 191524" src="https://github.com/user-attachments/assets/3e8c4391-bc45-4b20-bbe2-c23dc93a90f7" />
+
+
 # 🚀 Automação de Captação e Enriquecimento de Leads (SharePoint ➔ Salesforce) via n8n
 
 Este repositório contém um fluxo avançado construído no **n8n** para automação de processos comerciais. O robô lê dados de licitações em uma planilha no SharePoint/Excel Online, enriquece o cadastro da empresa via APIs e Inteligência Artificial, e envia as informações tratadas para o Salesforce, garantindo um banco de dados limpo, sem duplicidades e com histórico de recorrência.
